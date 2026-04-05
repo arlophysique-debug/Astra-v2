@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Astra Results</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg:#0b0b0f; --accent:#00e5ff; --accent2:#7c5cfc;
+      --text:#e8eaf6; --muted:rgba(255,255,255,0.4);
+      --chrome-bg:rgba(18,18,26,0.95); --chrome-border:rgba(255,255,255,0.08);
+    }
+    body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; }
+    canvas { position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.4; }
+
+    /* CHROME TOP BAR */
+    .chrome-bar {
+      position:fixed; top:0; left:0; right:0; height:60px;
+      background:var(--chrome-bg); border-bottom:1px solid var(--chrome-border);
+      backdrop-filter:blur(20px); display:flex; align-items:center;
+      gap:10px; padding:0 16px; z-index:1000;
+    }
+    .nav-btns { display:flex; gap:4px; }
+    .nav-btn {
+      width:34px; height:34px; border:none; border-radius:50%;
+      background:transparent; color:var(--muted); font-size:16px;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:background 0.2s,color 0.2s;
+    }
+    .nav-btn:hover { background:rgba(255,255,255,0.08); color:var(--text); }
+
+    .address-bar-wrap { flex:1; position:relative; display:flex; align-items:center; }
+    .address-bar {
+      width:100%; padding:9px 44px 9px 40px;
+      background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.1);
+      border-radius:24px; color:var(--text); font-family:'DM Sans',sans-serif;
+      font-size:14px; outline:none; transition:all 0.3s;
+    }
+    .address-bar:focus { background:rgba(255,255,255,0.08); border-color:rgba(0,229,255,0.5); box-shadow:0 0 0 3px rgba(0,229,255,0.1); }
+    .address-bar::placeholder { color:rgba(255,255,255,0.25); }
+    .addr-icon { position:absolute; left:14px; font-size:14px; color:var(--muted); pointer-events:none; }
+    .addr-search-btn {
+      position:absolute; right:10px;
+      background:linear-gradient(135deg,#00e5ff,#7c5cfc);
+      border:none; border-radius:50%; width:28px; height:28px;
+      color:white; font-size:13px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+    }
+
+    .user-area { display:flex; align-items:center; gap:10px; margin-left:8px; }
+    .user-name { font-size:13px; color:var(--muted); display:none; }
+    @media(min-width:640px){ .user-name { display:block; } }
+    .user-avatar {
+      width:32px; height:32px; border-radius:50%;
+      background:linear-gradient(135deg,#00e5ff,#7c5cfc);
+      display:flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:700; color:white; flex-shrink:0;
+    }
+    .logout-btn {
+      padding:7px 16px; background:rgba(255,95,109,0.12);
+      border:1px solid rgba(255,95,109,0.3); border-radius:20px;
+      color:#ff5f6d; font-size:12px; font-weight:600; cursor:pointer;
+      transition:all 0.2s; white-space:nowrap; display:flex; align-items:center; gap:6px;
+    }
+    .logout-btn:hover { background:rgba(255,95,109,0.2); }
+
+    /* RESULTS TABS BAR */
+    .tabs-bar {
+      position:fixed; top:60px; left:0; right:0; height:44px;
+      background:rgba(12,12,18,0.95); border-bottom:1px solid rgba(255,255,255,0.06);
+      backdrop-filter:blur(10px); z-index:999;
+      display:flex; align-items:center; padding:0 20px; gap:4px;
+    }
+    .tab-btn {
+      padding:6px 16px; border:none; background:transparent;
+      color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px;
+      cursor:pointer; border-bottom:2px solid transparent;
+      transition:all 0.2s; border-radius:0;
+    }
+    .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab-btn:hover { color:var(--text); }
+
+    /* MAIN LAYOUT */
+    .main { position:relative; z-index:10; padding-top:120px; display:flex; gap:0; }
+    .results-col {
+      flex:1; padding:20px 24px; max-width:720px;
+      margin:0 auto;
+    }
+
+    /* Result count */
+    .result-meta { font-size:12px; color:var(--muted); margin-bottom:20px; letter-spacing:0.5px; }
+    .result-meta span { color:var(--accent); }
+
+    /* Cards */
+    .card {
+      padding:16px 0; border-bottom:1px solid rgba(255,255,255,0.06);
+      cursor:pointer; transition:all 0.2s;
+      animation: fadeUp 0.4s ease both;
+    }
+    .card:hover { padding-left:8px; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    .card-url { font-size:12px; color:#00c96e; margin-bottom:4px; display:flex; align-items:center; gap:6px; }
+    .card-url .site-icon { font-size:14px; }
+    .card h3 { font-size:18px; font-weight:500; color:#4da6ff; margin-bottom:5px; transition:color 0.2s; }
+    .card:hover h3 { color:#66b3ff; text-decoration:underline; }
+    .card p { font-size:13px; color:rgba(255,255,255,0.55); line-height:1.6; }
+
+    /* No results */
+    .no-results { text-align:center; padding:60px 20px; }
+    .no-results .emoji { font-size:48px; margin-bottom:16px; }
+    .no-results h2 { font-size:22px; color:var(--muted); margin-bottom:8px; }
+    .no-results p { font-size:14px; color:rgba(255,255,255,0.25); }
+    .try-google {
+      display:inline-block; margin-top:24px; padding:12px 28px;
+      background:linear-gradient(135deg,#00e5ff,#7c5cfc);
+      border:none; border-radius:28px; color:white;
+      font-family:'DM Sans',sans-serif; font-size:14px; font-weight:600;
+      cursor:pointer; text-decoration:none; transition:transform 0.2s;
+    }
+    .try-google:hover { transform:translateY(-2px); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-thumb { background:var(--accent); border-radius:10px; }
+  </style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<!-- CHROME TOP BAR -->
+<div class="chrome-bar">
+  <div class="nav-btns">
+    <button class="nav-btn" onclick="window.location.href='astra.html'" title="Back to Home">&#8592;</button>
+    <button class="nav-btn" onclick="history.forward()" title="Forward">&#8594;</button>
+    <button class="nav-btn" onclick="location.reload()" title="Refresh">&#8635;</button>
+  </div>
+
+  <div class="address-bar-wrap">
+    <span class="addr-icon">🔍</span>
+    <input class="address-bar" id="addressBar" placeholder="Search Astra..."
+      onkeydown="if(event.key==='Enter') newSearch()"/>
+    <button class="addr-search-btn" onclick="newSearch()">➤</button>
+  </div>
+
+  <div class="user-area">
+    <span class="user-name" id="userName">User</span>
+    <div class="user-avatar" id="userAvatar">U</div>
+    <button class="logout-btn" onclick="logout()">⏻ Logout</button>
+  </div>
+</div>
+
+<!-- RESULTS TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn active" id="tabAll" onclick="switchTab('all')">🔍 All</button>
+  <button class="tab-btn" id="tabNews" onclick="switchTab('news')">📰 News</button>
+  <button class="tab-btn" id="tabTech" onclick="switchTab('tech')">💻 Tech</button>
+  <button class="tab-btn" id="tabEducation" onclick="switchTab('education')">📚 Education</button>
+  <button class="tab-btn" id="tabShopping" onclick="switchTab('shopping')">🛍️ Shopping</button>
+</div>
+
+<!-- RESULTS -->
+<div class="main">
+  <div class="results-col">
+    <div class="result-meta" id="resultMeta">Loading...</div>
+    <div id="results"></div>
+  </div>
+</div>
+
+<!-- Particle Background -->
+<script>
+  const canvas = document.getElementById("bg");
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  let particles = [];
+  for(let i=0;i<80;i++) particles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*1+0.3,dx:(Math.random()-0.5)*0.3,dy:(Math.random()-0.5)*0.3,o:Math.random()*0.3+0.1,c:Math.random()>0.5?"0,229,255":"124,92,252"});
+  function animateBg(){ctx.clearRect(0,0,canvas.width,canvas.height);particles.forEach(p=>{p.x+=p.dx;p.y+=p.dy;if(p.x<0||p.x>canvas.width)p.dx*=-1;if(p.y<0||p.y>canvas.height)p.dy*=-1;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(${p.c},${p.o})`;ctx.fill();});requestAnimationFrame(animateBg);}
+  animateBg();
+  window.addEventListener("resize",()=>{canvas.width=window.innerWidth;canvas.height=window.innerHeight;});
+</script>
+
+<script>
+// ============= DATABASE (same as results.js) =============
+const pages = [
+  {title:"Amit Kumar",desc:"Passionate web developer specializing in HTML, CSS, JavaScript and modern web applications.",url:"https://arlophysique-debug.github.io/Astra-Search-Engine/",tags:["tech","education"]},
+  {title:"Astra Search Engine",desc:"Futuristic search engine project by Amit Kumar",url:"https://arlophysique-debug.github.io/Astra-Search-Engine/astra.html",tags:["tech"]},
+  {title:"MDN Web Docs",desc:"Official web development documentation by Mozilla",url:"https://developer.mozilla.org/",tags:["tech","education"]},
+  {title:"W3Schools",desc:"Beginner friendly coding tutorials for HTML, CSS, JavaScript",url:"https://www.w3schools.com/",tags:["tech","education"]},
+  {title:"JavaScript Info",desc:"Deep JavaScript learning guide with examples",url:"https://javascript.info/",tags:["tech","education"]},
+  {title:"freeCodeCamp",desc:"Free coding practice and certification",url:"https://www.freecodecamp.org/",tags:["tech","education"]},
+  {title:"GitHub",desc:"Code hosting and version control platform",url:"https://github.com/",tags:["tech"]},
+  {title:"Stack Overflow",desc:"Developer Q&A community for programming problems",url:"https://stackoverflow.com/",tags:["tech","education"]},
+  {title:"CSS Tricks",desc:"Advanced CSS guides and tricks",url:"https://css-tricks.com/",tags:["tech","education"]},
+  {title:"Google",desc:"World's most popular search engine",url:"https://www.google.com/",tags:[]},
+  {title:"YouTube",desc:"Video learning and entertainment platform",url:"https://www.youtube.com/",tags:[]},
+  {title:"ChatGPT",desc:"AI assistant for learning and coding",url:"https://chat.openai.com/",tags:["tech"]},
+  {title:"Wikipedia",desc:"Free online encyclopedia with millions of articles",url:"https://www.wikipedia.org/",tags:["education"]},
+  {title:"React Docs",desc:"Official React documentation and tutorials",url:"https://react.dev/",tags:["tech","education"]},
+  {title:"Node.js",desc:"JavaScript runtime for backend development",url:"https://nodejs.org/",tags:["tech"]},
+  {title:"Python",desc:"Official Python programming language website",url:"https://www.python.org/",tags:["tech","education"]},
+  {title:"BBC World News",desc:"Global breaking news and updates from BBC",url:"https://www.bbc.com/news",tags:["news"]},
+  {title:"CNN News",desc:"International news coverage and live reports",url:"https://www.cnn.com",tags:["news"]},
+  {title:"Reuters",desc:"Trusted global news agency",url:"https://www.reuters.com",tags:["news"]},
+  {title:"NDTV News",desc:"Breaking India news and live updates",url:"https://www.ndtv.com",tags:["news"]},
+  {title:"India Today",desc:"Politics, sports and entertainment news India",url:"https://www.indiatoday.in",tags:["news"]},
+  {title:"Times of India",desc:"India's leading news portal",url:"https://timesofindia.indiatimes.com",tags:["news"]},
+  {title:"The Hindu",desc:"Indian national and international news",url:"https://www.thehindu.com",tags:["news"]},
+  {title:"Hindustan Times",desc:"Latest India and world news",url:"https://www.hindustantimes.com",tags:["news"]},
+  {title:"Dainik Jagran",desc:"Hindi daily news and updates",url:"https://www.jagran.com",tags:["news"]},
+  {title:"Aaj Tak",desc:"Hindi breaking news channel",url:"https://www.aajtak.in",tags:["news"]},
+  {title:"TechCrunch",desc:"Startup and tech news",url:"https://techcrunch.com",tags:["tech","news"]},
+  {title:"The Verge",desc:"Technology and gadgets news",url:"https://www.theverge.com",tags:["tech","news"]},
+  {title:"Wired",desc:"Technology and innovation news",url:"https://www.wired.com",tags:["tech","news"]},
+  {title:"Ars Technica",desc:"Tech and science news",url:"https://arstechnica.com",tags:["tech","news"]},
+  {title:"MIT Technology Review",desc:"Future technology analysis and news",url:"https://www.technologyreview.com",tags:["tech","news"]},
+  {title:"OpenAI Blog",desc:"AI research updates from OpenAI",url:"https://openai.com/blog",tags:["tech","news"]},
+  {title:"Khan Academy",desc:"Free education platform for all subjects",url:"https://www.khanacademy.org",tags:["education"]},
+  {title:"Coursera",desc:"Online courses from top universities",url:"https://www.coursera.org",tags:["education"]},
+  {title:"Udemy",desc:"Online learning marketplace with thousands of courses",url:"https://www.udemy.com",tags:["education"]},
+  {title:"edX",desc:"University-level online courses",url:"https://www.edx.org",tags:["education"]},
+  {title:"MIT OpenCourseWare",desc:"Free MIT courses online",url:"https://ocw.mit.edu",tags:["education"]},
+  {title:"GeeksforGeeks",desc:"Programming tutorials and articles",url:"https://www.geeksforgeeks.org",tags:["tech","education"]},
+  {title:"BYJU'S",desc:"Indian learning app for school students",url:"https://byjus.com",tags:["education"]},
+  {title:"Unacademy",desc:"Competitive exam preparation India",url:"https://unacademy.com",tags:["education"]},
+  {title:"LeetCode",desc:"DSA coding practice platform for interviews",url:"https://leetcode.com",tags:["tech","education"]},
+  {title:"HackerRank",desc:"Coding challenges platform",url:"https://www.hackerrank.com",tags:["tech","education"]},
+  {title:"Myntra",desc:"Fashion clothing and accessories shopping",url:"https://www.myntra.com",tags:["shopping"]},
+  {title:"Amazon India",desc:"Online shopping marketplace India",url:"https://www.amazon.in",tags:["shopping"]},
+  {title:"Flipkart",desc:"Leading e-commerce platform India",url:"https://www.flipkart.com",tags:["shopping"]},
+  {title:"Meesho",desc:"Budget online shopping India",url:"https://www.meesho.com",tags:["shopping"]},
+  {title:"Nykaa",desc:"Beauty, makeup and skincare shopping",url:"https://www.nykaa.com",tags:["shopping"]},
+  {title:"AJIO",desc:"Trendy fashion shopping India",url:"https://www.ajio.com",tags:["shopping"]},
+  {title:"Snapdeal",desc:"Discount shopping platform India",url:"https://www.snapdeal.com",tags:["shopping"]},
+  {title:"IRCTC",desc:"Railway ticket booking India",url:"https://www.irctc.co.in",tags:[]},
+  {title:"Cricbuzz",desc:"Cricket news and live score updates",url:"https://www.cricbuzz.com",tags:["news"]},
+  {title:"ESPN Cricinfo",desc:"Cricket analysis and news",url:"https://www.espncricinfo.com",tags:["news"]},
+  {title:"Netflix",desc:"Movie and web series streaming platform",url:"https://www.netflix.com",tags:[]},
+  {title:"Spotify",desc:"Music streaming service",url:"https://www.spotify.com",tags:[]},
+  {title:"Firebase",desc:"Backend as a service by Google",url:"https://firebase.google.com/",tags:["tech"]},
+  {title:"Vercel",desc:"Frontend deployment platform",url:"https://vercel.com/",tags:["tech"]},
+  {title:"Netlify",desc:"Website hosting platform",url:"https://www.netlify.com/",tags:["tech"]},
+  {title:"Google Scholar",desc:"Research papers search engine",url:"https://scholar.google.com",tags:["education"]},
+  {title:"Figma",desc:"UI/UX design tool for teams",url:"https://www.figma.com/",tags:["tech"]},
+  {title:"Canva",desc:"Graphic design platform",url:"https://www.canva.com/",tags:["tech"]},
+  {title:"UPSC",desc:"Civil services exams India",url:"https://www.upsc.gov.in",tags:["education"]},
+  {title:"NTA NEET Portal",desc:"Medical entrance exam portal",url:"https://neet.nta.nic.in",tags:["education"]},
+  {title:"JEE Main",desc:"Engineering entrance exam portal",url:"https://jeemain.nta.nic.in",tags:["education"]},
+  {title:"Income Tax India",desc:"Income tax filing portal",url:"https://www.incometax.gov.in",tags:[]},
+  {title:"DigiLocker",desc:"Digital document wallet India",url:"https://www.digilocker.gov.in",tags:[]},
+  {title:"ISRO",desc:"Indian Space Research Organisation",url:"https://www.isro.gov.in",tags:["news","education"]},
+  {title:"NASA News",desc:"Space and science updates from NASA",url:"https://www.nasa.gov/news",tags:["news","education"]},
+  {title:"Tumblr",desc:"Blogging and social platform",url:"https://www.tumblr.com",tags:[]},
+  {title:"LinkedIn",desc:"Professional networking platform",url:"https://www.linkedin.com",tags:[]},
+  {title:"Naukri",desc:"Job search platform India",url:"https://www.naukri.com",tags:[]},
+  {title:"Internshala",desc:"Internships and jobs India",url:"https://internshala.com",tags:[]},
+  {title:"Twitter / X",desc:"Microblogging and social platform",url:"https://x.com",tags:[]},
+  {title:"Instagram",desc:"Photo and reel sharing social app",url:"https://www.instagram.com",tags:[]},
+  {title:"WhatsApp Web",desc:"Messaging and calling app",url:"https://web.whatsapp.com",tags:[]},
+  {title:"Telegram Web",desc:"Messaging platform with channels",url:"https://web.telegram.org",tags:[]},
+  {title:"Discord",desc:"Gaming and community chat platform",url:"https://discord.com",tags:[]},
+];
+
+let currentQuery = "";
+let currentTab = "all";
+
+function getQuery(){
+  return new URLSearchParams(window.location.search).get("q") || "";
+}
+
+function displayResults(tab){
+  const q = currentQuery.toLowerCase();
+  const container = document.getElementById("results");
+  const meta = document.getElementById("resultMeta");
+
+  let filtered = pages.filter(p=>{
+    const matchQuery = p.title.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q) || p.url.toLowerCase().includes(q);
+    const matchTab = tab==="all" || (p.tags && p.tags.includes(tab));
+    return matchQuery && matchTab;
+  });
+
+  // Score sorting
+  filtered = filtered.map(p=>{
+    let score=0;
+    if(p.title.toLowerCase().includes(q)) score+=3;
+    if(p.desc.toLowerCase().includes(q)) score+=1;
+    return {...p,score};
+  }).sort((a,b)=>b.score-a.score);
+
+  if(filtered.length===0){
+    meta.innerHTML = `Showing <span>0</span> results for "<span>${currentQuery}</span>"`;
+    container.innerHTML = `
+      <div class="no-results">
+        <div class="emoji">🔭</div>
+        <h2>No results found</h2>
+        <p>Try different keywords or search on Google</p>
+        <a class="try-google" href="https://www.google.com/search?q=${encodeURIComponent(currentQuery)}" target="_blank">🌐 Search on Google</a>
+      </div>`;
+    return;
+  }
+
+  meta.innerHTML = `About <span>${filtered.length}</span> results for "<span>${currentQuery}</span>"`;
+  container.innerHTML = filtered.map((r,i)=>`
+    <div class="card" style="animation-delay:${i*0.04}s" onclick="openPage('${r.url}')">
+      <div class="card-url">
+        <span class="site-icon">🌐</span>
+        <span>${r.url}</span>
+      </div>
+      <h3>${r.title}</h3>
+      <p>${r.desc}</p>
+    </div>
+  `).join("");
+}
+
+function openPage(url){ window.open(url,"_blank"); }
+
+function newSearch(){
+  const q = document.getElementById("addressBar").value.trim();
+  if(!q) return;
+  window.location.href = "results.html?q=" + encodeURIComponent(q);
+}
+
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("tab"+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add("active");
+  displayResults(tab);
+}
+
+// Init
+window.addEventListener("DOMContentLoaded",()=>{
+  currentQuery = getQuery();
+  document.getElementById("addressBar").value = currentQuery;
+  document.title = `Astra — ${currentQuery}`;
+  displayResults("all");
+});
+
+document.addEventListener("keydown",(e)=>{ if(e.key==="Enter") newSearch(); });
+</script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+  // 🔧 Firebase Configuration — arlo-v1 project (naya config)
+  const firebaseConfig = {
+    apiKey: "AIzaSyA05Y2IMWbFMQkzaRYFUCBv7R9ipNgrWAU",         // API Key
+    authDomain: "arlo-v1-73d70.firebaseapp.com",                // Auth Domain
+    projectId: "arlo-v1-73d70",                                  // Project ID
+    storageBucket: "arlo-v1-73d70.firebasestorage.app",          // Storage Bucket
+    messagingSenderId: "1091613376839",                          // Messaging Sender ID
+    appId: "1:1091613376839:web:188c8b7490322d2de18c62"          // App ID
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      window.location.href = "index.html";
+    } else {
+      const name = user.displayName || user.email.split("@")[0];
+      document.getElementById("userName").textContent = name;
+      document.getElementById("userAvatar").textContent = name.charAt(0).toUpperCase();
+    }
+  });
+
+  window.logout = function() {
+    signOut(auth).then(() => {
+      localStorage.removeItem("currentUser");
+      sessionStorage.removeItem("currentUser");
+      window.location.href = "index.html";
+    }).catch((err) => console.error(err));
+  };
+</script>
+</body>
+</html>

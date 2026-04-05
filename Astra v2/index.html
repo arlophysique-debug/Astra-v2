@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Astra — Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --glass-bg: rgba(255,255,255,0.04);
+      --glass-border: rgba(255,255,255,0.10);
+      --accent: #00e5ff;
+      --accent2: #7c5cfc;
+      --error: #ff5f6d;
+      --success: #00e5a0;
+      --text: #e8eaf6;
+      --muted: rgba(255,255,255,0.45);
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Sans', sans-serif;
+      background: #010714;
+      overflow: hidden;
+    }
+
+    canvas { position: fixed; inset: 0; z-index: 0; }
+
+    .orb { position:fixed; border-radius:50%; filter:blur(80px); animation:drift 12s ease-in-out infinite alternate; z-index:0; }
+    .orb1 { width:400px;height:400px;background:rgba(0,100,220,0.2);top:-100px;left:-100px; }
+    .orb2 { width:350px;height:350px;background:rgba(124,92,252,0.18);bottom:-80px;right:-80px;animation-delay:-4s; }
+    .orb3 { width:250px;height:250px;background:rgba(0,229,255,0.10);top:50%;left:60%;animation-delay:-8s; }
+    @keyframes drift { from{transform:translate(0,0) scale(1)} to{transform:translate(30px,40px) scale(1.1)} }
+
+    .card-wrap {
+      position:relative;z-index:10;width:420px;
+      animation:cardIn 0.8s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes cardIn {
+      from{opacity:0;transform:translateY(40px) scale(0.96)}
+      to{opacity:1;transform:translateY(0) scale(1)}
+    }
+
+    .card {
+      background:var(--glass-bg);
+      border:1px solid var(--glass-border);
+      border-radius:28px;
+      padding:44px 40px 36px;
+      backdrop-filter:blur(40px) saturate(160%);
+      box-shadow:0 40px 80px rgba(0,0,0,0.6),0 0 60px rgba(0,100,255,0.06);
+      position:relative;overflow:hidden;
+    }
+    .card::before {
+      content:'';position:absolute;top:0;left:20%;right:20%;height:1px;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent);
+    }
+
+    .logo-wrap { text-align:center;margin-bottom:32px; }
+    .logo {
+      font-family:'Syne',sans-serif;font-size:32px;font-weight:800;letter-spacing:6px;
+      background:linear-gradient(90deg,#00e5ff,#7c5cfc);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    }
+    .logo-sub { font-size:12px;color:var(--muted);letter-spacing:2px;margin-top:4px; }
+
+    .tabs {
+      display:flex;gap:4px;background:rgba(255,255,255,0.04);
+      border-radius:14px;padding:4px;margin-bottom:28px;
+    }
+    .tab {
+      flex:1;padding:10px;border:none;border-radius:10px;background:transparent;
+      color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;
+      font-weight:500;cursor:pointer;transition:all 0.3s ease;
+    }
+    .tab.active {
+      background:linear-gradient(135deg,rgba(0,229,255,0.15),rgba(124,92,252,0.15));
+      color:var(--text);box-shadow:0 0 20px rgba(0,229,255,0.1);
+    }
+
+    .form { display:none;flex-direction:column;gap:16px; }
+    .form.active { display:flex;animation:formIn 0.4s ease both; }
+    @keyframes formIn { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:translateX(0)} }
+
+    .field { display:flex;flex-direction:column;gap:6px; }
+    label { font-size:12px;font-weight:500;color:var(--muted);letter-spacing:0.5px; }
+
+    .input-wrap { position:relative;display:flex;align-items:center; }
+
+    input[type="text"],input[type="email"],input[type="password"] {
+      width:100%;padding:13px 44px 13px 16px;
+      background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);
+      border-radius:12px;color:var(--text);font-family:'DM Sans',sans-serif;
+      font-size:14px;outline:none;transition:all 0.3s ease;
+    }
+    input:focus {
+      border-color:rgba(0,229,255,0.4);background:rgba(0,229,255,0.04);
+      box-shadow:0 0 0 3px rgba(0,229,255,0.08);
+    }
+    input.error-field { border-color:rgba(255,95,109,0.5); }
+    input::placeholder { color:rgba(255,255,255,0.2); }
+
+    .toggle-pw {
+      position:absolute;right:14px;background:none;border:none;cursor:pointer;
+      color:var(--muted);font-size:16px;line-height:1;transition:color 0.2s;padding:4px;
+    }
+    .toggle-pw:hover { color:var(--accent); }
+
+    .error-msg { font-size:11.5px;color:var(--error);display:none;align-items:center;gap:4px; }
+    .error-msg.show { display:flex; }
+
+    .remember { display:flex;align-items:center;gap:10px;cursor:pointer; }
+    .remember input { display:none; }
+    .checkmark {
+      width:18px;height:18px;border:1.5px solid rgba(255,255,255,0.15);
+      border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all 0.2s ease;
+    }
+    .remember input:checked ~ .checkmark { background:linear-gradient(135deg,#00e5ff,#7c5cfc);border-color:transparent; }
+    .checkmark::after { content:'✓';font-size:11px;color:white;opacity:0;transition:opacity 0.2s; }
+    .remember input:checked ~ .checkmark::after { opacity:1; }
+    .remember-label { font-size:13px;color:var(--muted); }
+
+    .btn-submit {
+      width:100%;padding:14px;margin-top:4px;border:none;border-radius:14px;
+      background:linear-gradient(135deg,#00e5ff,#7c5cfc);color:white;
+      font-family:'Syne',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;
+      cursor:pointer;transition:all 0.3s ease;display:flex;align-items:center;justify-content:center;gap:8px;
+    }
+    .btn-submit:hover { transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,229,255,0.25); }
+
+    .btn-google {
+      width:100%;padding:13px;border-radius:14px;
+      background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
+      color:white;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;
+      transition:all 0.3s ease;display:flex;align-items:center;justify-content:center;gap:10px;
+    }
+    .btn-google:hover { background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.25);transform:translateY(-2px); }
+    .btn-google img { width:18px;height:18px; }
+
+    .or-divider { display:flex;align-items:center;gap:12px;margin:4px 0; }
+    .or-divider span { font-size:12px;color:var(--muted);white-space:nowrap; }
+    .or-line { flex:1;height:1px;background:rgba(255,255,255,0.08); }
+    .divider { height:1px;background:rgba(255,255,255,0.06);margin:4px 0; }
+
+    .toast {
+      position:fixed;bottom:30px;left:50%;
+      transform:translateX(-50%) translateY(20px);
+      background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter:blur(20px);color:white;padding:12px 24px;
+      border-radius:40px;font-size:14px;opacity:0;
+      transition:all 0.4s cubic-bezier(.22,1,.36,1);
+      z-index:100;pointer-events:none;white-space:nowrap;
+    }
+    .toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+    .toast.error { border-color:rgba(255,95,109,0.4);color:#ff5f6d; }
+    .toast.success { border-color:rgba(0,229,160,0.4);color:#00e5a0; }
+
+    .spinner {
+      width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);
+      border-top-color:white;border-radius:50%;
+      animation:spin 0.7s linear infinite;display:none;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+  </style>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+
+  <div class="card-wrap">
+    <div class="card">
+      <div class="logo-wrap">
+        <div class="logo">ASTRA</div>
+        <div class="logo-sub">NEXT-GEN SEARCH ENGINE</div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('login')">Sign In</button>
+        <button class="tab" onclick="switchTab('register')">Register</button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <div class="form active" id="loginForm">
+        <button class="btn-google" onclick="googleLogin()">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"/>
+          Continue with Google
+        </button>
+        <div class="or-divider"><div class="or-line"></div><span>or sign in with email</span><div class="or-line"></div></div>
+
+        <div class="field">
+          <label>USERNAME</label>
+          <div class="input-wrap">
+            <input type="text" id="loginEmail" placeholder="enter your username" autocomplete="username"/>
+          </div>
+          <span class="error-msg" id="loginEmailErr">⚠ Please enter your username</span>
+        </div>
+
+        <div class="field">
+          <label>PASSWORD</label>
+          <div class="input-wrap">
+            <input type="password" id="loginPassword" placeholder="enter your password" autocomplete="current-password"/>
+            <button class="toggle-pw" onclick="togglePw('loginPassword', this)" tabindex="-1">👁</button>
+          </div>
+          <span class="error-msg" id="loginPasswordErr">⚠ Please enter your password</span>
+        </div>
+
+        <label class="remember">
+          <input type="checkbox" id="rememberMe"/>
+          <span class="checkmark"></span>
+          <span class="remember-label">Remember me</span>
+        </label>
+
+        <div class="divider"></div>
+
+        <button class="btn-submit" onclick="login()">
+          <span class="btn-text">SIGN IN</span>
+          <div class="spinner"></div>
+        </button>
+      </div>
+
+      <!-- REGISTER FORM -->
+      <div class="form" id="registerForm">
+        <button class="btn-google" onclick="googleLogin()">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"/>
+          Sign up with Google
+        </button>
+        <div class="or-divider"><div class="or-line"></div><span>or create with email</span><div class="or-line"></div></div>
+
+        <div class="field">
+          <label>USERNAME</label>
+          <div class="input-wrap">
+            <input type="text" id="regEmail" placeholder="choose a username" autocomplete="username"/>
+          </div>
+          <span class="error-msg" id="regEmailErr">⚠ Please enter a username</span>
+        </div>
+
+        <div class="field">
+          <label>PASSWORD</label>
+          <div class="input-wrap">
+            <input type="password" id="regPassword" placeholder="min 6 characters" autocomplete="new-password"/>
+            <button class="toggle-pw" onclick="togglePw('regPassword', this)" tabindex="-1">👁</button>
+          </div>
+          <span class="error-msg" id="regPasswordErr">⚠ Password must be at least 6 characters</span>
+        </div>
+
+        <div class="field">
+          <label>CONFIRM PASSWORD</label>
+          <div class="input-wrap">
+            <input type="password" id="regConfirm" placeholder="repeat password" autocomplete="new-password"/>
+            <button class="toggle-pw" onclick="togglePw('regConfirm', this)" tabindex="-1">👁</button>
+          </div>
+          <span class="error-msg" id="regConfirmErr">⚠ Passwords do not match</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <button class="btn-submit" onclick="register()">
+          <span class="btn-text">CREATE ACCOUNT</span>
+          <div class="spinner"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Canvas particles
+    const canvas = document.getElementById("bg");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    let particles = [];
+    for(let i=0;i<120;i++) particles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*1.5+0.5,dx:(Math.random()-0.5)*0.4,dy:(Math.random()-0.5)*0.4,o:Math.random()*0.5+0.2});
+    function animateBg(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      particles.forEach(p=>{
+        p.x+=p.dx; p.y+=p.dy;
+        if(p.x<0||p.x>canvas.width) p.dx*=-1;
+        if(p.y<0||p.y>canvas.height) p.dy*=-1;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle=`rgba(0,229,255,${p.o})`; ctx.fill();
+      });
+      requestAnimationFrame(animateBg);
+    }
+    animateBg();
+    window.addEventListener("resize",()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
+  </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+    // 🔧 Firebase Configuration — arlo-v1 project (naya config)
+    const firebaseConfig = {
+      apiKey: "AIzaSyA05Y2IMWbFMQkzaRYFUCBv7R9ipNgrWAU",         // API Key
+      authDomain: "arlo-v1-73d70.firebaseapp.com",                // Auth Domain
+      projectId: "arlo-v1-73d70",                                  // Project ID
+      storageBucket: "arlo-v1-73d70.firebasestorage.app",          // Storage Bucket
+      messagingSenderId: "1091613376839",                          // Messaging Sender ID
+      appId: "1:1091613376839:web:188c8b7490322d2de18c62"          // App ID
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const googleProvider = new GoogleAuthProvider();
+
+    // Auto redirect if already logged in
+    onAuthStateChanged(auth, (user) => {
+      if (user) { window.location.href = "astra.html"; }
+    });
+
+    function normalize(val) {
+      val = val.trim().toLowerCase();
+      if (val.includes("@")) val = val.split("@")[0];
+      return val + "@arlo.com";
+    }
+
+    function showToast(msg, type = "success") {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.className = "toast " + type;
+      setTimeout(() => t.classList.add("show"), 10);
+      setTimeout(() => t.classList.remove("show"), 3000);
+    }
+
+    function clearErrors() {
+      document.querySelectorAll(".error-msg").forEach(e => e.classList.remove("show"));
+      document.querySelectorAll("input").forEach(e => e.classList.remove("error-field"));
+    }
+
+    function goToAstra(email) {
+      localStorage.setItem("currentUser", email);
+      showToast("Welcome to Astra 🚀", "success");
+      setTimeout(() => { window.location.href = "astra.html"; }, 1000);
+    }
+
+    window.switchTab = function(tab) {
+      clearErrors();
+      document.querySelectorAll(".tab").forEach((t, i) => {
+        t.classList.toggle("active", (i === 0 && tab === "login") || (i === 1 && tab === "register"));
+      });
+      document.getElementById("loginForm").classList.toggle("active", tab === "login");
+      document.getElementById("registerForm").classList.toggle("active", tab === "register");
+    };
+
+    window.togglePw = function(inputId, btn) {
+      const input = document.getElementById(inputId);
+      input.type = input.type === "password" ? "text" : "password";
+      btn.textContent = input.type === "password" ? "👁" : "🙈";
+    };
+
+    window.googleLogin = function() {
+      signInWithPopup(auth, googleProvider)
+        .then((result) => { goToAstra(result.user.email); })
+        .catch((error) => { showToast("❌ " + error.message, "error"); });
+    };
+
+    window.register = function() {
+      clearErrors();
+      const emailVal = document.getElementById("regEmail").value.trim();
+      const passVal  = document.getElementById("regPassword").value;
+      const confVal  = document.getElementById("regConfirm").value;
+      if (!emailVal) { document.getElementById("regEmailErr").classList.add("show"); return; }
+      if (passVal.length < 6) { document.getElementById("regPasswordErr").classList.add("show"); return; }
+      if (passVal !== confVal) { document.getElementById("regConfirmErr").classList.add("show"); return; }
+      createUserWithEmailAndPassword(auth, normalize(emailVal), passVal)
+        .then(() => { showToast("Account Created ✅", "success"); window.switchTab("login"); document.getElementById("loginEmail").value = emailVal; })
+        .catch((error) => { showToast("❌ " + error.message, "error"); });
+    };
+
+    window.login = function() {
+      clearErrors();
+      const emailVal = document.getElementById("loginEmail").value.trim();
+      const passVal  = document.getElementById("loginPassword").value;
+      if (!emailVal) { document.getElementById("loginEmailErr").classList.add("show"); return; }
+      if (!passVal) { document.getElementById("loginPasswordErr").classList.add("show"); return; }
+      signInWithEmailAndPassword(auth, normalize(emailVal), passVal)
+        .then((result) => { goToAstra(result.user.email); })
+        .catch((error) => { showToast("❌ " + error.message, "error"); });
+    };
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      document.getElementById("loginForm").classList.contains("active") ? window.login() : window.register();
+    });
+  </script>
+</body>
+</html>

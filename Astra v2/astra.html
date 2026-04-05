@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Astra Search</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    :root {
+      --bg: #0b0b0f;
+      --chrome-bg: rgba(18,18,26,0.95);
+      --chrome-border: rgba(255,255,255,0.08);
+      --accent: #00e5ff;
+      --accent2: #7c5cfc;
+      --text: #e8eaf6;
+      --muted: rgba(255,255,255,0.4);
+      --glass: rgba(255,255,255,0.04);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    canvas { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+    /* ========== CHROME-LIKE TOP BAR ========== */
+    .chrome-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: var(--chrome-bg);
+      border-bottom: 1px solid var(--chrome-border);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      z-index: 1000;
+    }
+
+    /* Nav Buttons */
+    .nav-btns { display:flex; gap:4px; }
+    .nav-btn {
+      width: 34px; height: 34px;
+      border: none; border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items:center; justify-content:center;
+      transition: background 0.2s, color 0.2s;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+
+    /* Address / Search Bar */
+    .address-bar-wrap {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .address-bar {
+      width: 100%;
+      padding: 9px 44px 9px 40px;
+      background: rgba(255,255,255,0.06);
+      border: 1.5px solid rgba(255,255,255,0.1);
+      border-radius: 24px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.3s;
+    }
+    .address-bar:focus {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(0,229,255,0.5);
+      box-shadow: 0 0 0 3px rgba(0,229,255,0.1);
+    }
+    .address-bar::placeholder { color: rgba(255,255,255,0.25); }
+    .addr-icon {
+      position: absolute; left: 14px;
+      font-size: 14px; color: var(--muted);
+      pointer-events: none;
+    }
+    .addr-search-btn {
+      position: absolute; right: 10px;
+      background: linear-gradient(135deg,#00e5ff,#7c5cfc);
+      border: none; border-radius: 50%;
+      width: 28px; height: 28px;
+      color: white; font-size: 13px;
+      cursor: pointer; display:flex; align-items:center; justify-content:center;
+      transition: transform 0.2s;
+    }
+    .addr-search-btn:hover { transform: scale(1.1); }
+
+    /* Suggestions Dropdown */
+    .suggestions {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0; right: 0;
+      background: rgba(18,18,26,0.97);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      backdrop-filter: blur(20px);
+      overflow: hidden;
+      display: none;
+      z-index: 200;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    .suggestions.show { display:block; }
+    .suggestion-item {
+      padding: 10px 16px;
+      cursor: pointer;
+      display: flex; align-items:center; gap:10px;
+      font-size: 13px;
+      transition: background 0.15s;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item:hover { background: rgba(0,229,255,0.08); }
+    .suggestion-item .s-icon { font-size:12px; color:var(--muted); }
+    .suggestion-item .s-title { color: var(--text); flex:1; }
+    .suggestion-item .s-url { font-size:11px; color:var(--accent); }
+
+    /* User area */
+    .user-area {
+      display: flex; align-items:center; gap:10px; margin-left: 8px;
+    }
+    .user-name {
+      font-size: 13px; color: var(--muted);
+      display: none;
+    }
+    @media(min-width:640px){ .user-name { display:block; } }
+
+    .logout-btn {
+      padding: 7px 16px;
+      background: rgba(255,95,109,0.12);
+      border: 1px solid rgba(255,95,109,0.3);
+      border-radius: 20px;
+      color: #ff5f6d;
+      font-size: 12px; font-weight:600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      display: flex; align-items:center; gap:6px;
+    }
+    .logout-btn:hover { background: rgba(255,95,109,0.2); transform:translateY(-1px); }
+
+    .user-avatar {
+      width: 32px; height: 32px; border-radius:50%;
+      background: linear-gradient(135deg,#00e5ff,#7c5cfc);
+      display: flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:700; color:white;
+      flex-shrink:0;
+    }
+
+    /* ========== MAIN CONTENT ========== */
+    .main {
+      position: relative; z-index: 10;
+      padding-top: 120px;
+      min-height: 100vh;
+      display: flex; flex-direction:column; align-items:center;
+    }
+
+    .hero { text-align:center; margin-bottom: 40px; }
+    .logo {
+      font-family:'Syne',sans-serif; font-size:72px; font-weight:800; letter-spacing:8px;
+      background: linear-gradient(90deg,#00e5ff,#7c5cfc,#00e5ff);
+      background-size: 200%;
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      animation: shimmer 3s linear infinite;
+    }
+    @keyframes shimmer { from{background-position:0%} to{background-position:200%} }
+    .tagline { font-size:14px; color:var(--muted); letter-spacing:3px; margin-top:8px; }
+
+    /* Big Search Box */
+    .search-section { width:100%; max-width:650px; padding:0 20px; margin-bottom:28px; }
+    .big-search-wrap { position:relative; }
+    .big-search {
+      width:100%;
+      padding:18px 56px 18px 24px;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius:40px;
+      color: var(--text);
+      font-family:'DM Sans',sans-serif; font-size:16px;
+      outline:none; transition: all 0.3s;
+    }
+    .big-search:focus {
+      background: rgba(0,229,255,0.04);
+      border-color: rgba(0,229,255,0.5);
+      box-shadow: 0 0 30px rgba(0,229,255,0.12), 0 0 0 4px rgba(0,229,255,0.06);
+    }
+    .big-search::placeholder { color:rgba(255,255,255,0.2); }
+    .big-search-btn {
+      position:absolute; right:8px; top:50%; transform:translateY(-50%);
+      background: linear-gradient(135deg,#00e5ff,#7c5cfc);
+      border:none; border-radius:50%;
+      width: 42px; height:42px;
+      font-size:18px; color:white; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .big-search-btn:hover { transform:translateY(-50%) scale(1.1); box-shadow:0 4px 20px rgba(0,229,255,0.4); }
+
+    .btn-row {
+      display:flex; gap:12px; justify-content:center; margin-top:16px;
+    }
+    .btn-lucky {
+      padding:11px 28px;
+      background:rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.1);
+      border-radius:28px; color:var(--text);
+      font-family:'DM Sans',sans-serif; font-size:14px;
+      cursor:pointer; transition:all 0.2s;
+    }
+    .btn-lucky:hover { background:rgba(0,229,255,0.08); border-color:rgba(0,229,255,0.3); }
+
+    /* Quick Links */
+    .quick-links {
+      width:100%; max-width:700px;
+      padding:0 20px;
+      margin-bottom:40px;
+    }
+    .quick-title { font-size:11px; color:var(--muted); letter-spacing:2px; margin-bottom:14px; text-align:center; }
+    .links-grid {
+      display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+    }
+    @media(max-width:480px){ .links-grid { grid-template-columns:repeat(3,1fr); } }
+    .quick-link {
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.07);
+      border-radius:14px; padding:14px 8px;
+      text-align:center; cursor:pointer;
+      transition:all 0.2s; text-decoration:none;
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+    }
+    .quick-link:hover { background:rgba(0,229,255,0.06); border-color:rgba(0,229,255,0.2); transform:translateY(-2px); }
+    .quick-link .ql-icon { font-size:22px; }
+    .quick-link .ql-name { font-size:11px; color:var(--muted); }
+
+    /* ========== SCROLLBAR ========== */
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-thumb { background:#00e5ff; border-radius:10px; }
+  </style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<!-- CHROME-LIKE TOP BAR -->
+<div class="chrome-bar">
+  <div class="nav-btns">
+    <button class="nav-btn" title="Back" onclick="history.back()">&#8592;</button>
+    <button class="nav-btn" title="Forward" onclick="history.forward()">&#8594;</button>
+    <button class="nav-btn" title="Refresh" onclick="location.reload()">&#8635;</button>
+  </div>
+
+  <div class="address-bar-wrap">
+    <span class="addr-icon">🔍</span>
+    <input class="address-bar" id="addressBar" placeholder="Search Astra or enter URL..."
+      onkeydown="if(event.key==='Enter') doAddressSearch()"
+      oninput="showAddressSuggestions(this.value)"
+      onfocus="showAddressSuggestions(this.value)"
+      onblur="setTimeout(()=>hideSuggestions(),200)"/>
+    <button class="addr-search-btn" onclick="doAddressSearch()">➤</button>
+    <div class="suggestions" id="suggestions"></div>
+  </div>
+
+  <div class="user-area">
+    <span class="user-name" id="userName">User</span>
+    <div class="user-avatar" id="userAvatar">U</div>
+    <button class="logout-btn" onclick="logout()">⏻ Logout</button>
+  </div>
+</div>
+
+<!-- MAIN PAGE -->
+<div class="main">
+  <div class="hero">
+    <div class="logo">ASTRA</div>
+    <div class="tagline">SEARCH THE UNIVERSE</div>
+  </div>
+
+  <div class="search-section">
+    <div class="big-search-wrap">
+      <input class="big-search" id="mainSearch" placeholder="What are you looking for?"
+        onkeydown="if(event.key==='Enter') doMainSearch()"/>
+      <button class="big-search-btn" onclick="doMainSearch()">🔍</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn-lucky" onclick="feelingLucky()">🎲 I'm Feeling Lucky</button>
+      <button class="btn-lucky" onclick="openGoogle()">🌐 Search Google</button>
+    </div>
+  </div>
+
+  <!-- Quick Access Links -->
+  <div class="quick-links">
+    <div class="quick-title">QUICK ACCESS</div>
+    <div class="links-grid">
+      <a class="quick-link" href="https://www.youtube.com" target="_blank"><span class="ql-icon">▶️</span><span class="ql-name">YouTube</span></a>
+      <a class="quick-link" href="https://www.google.com" target="_blank"><span class="ql-icon">🔍</span><span class="ql-name">Google</span></a>
+      <a class="quick-link" href="https://github.com" target="_blank"><span class="ql-icon">🐙</span><span class="ql-name">GitHub</span></a>
+      <a class="quick-link" href="https://chat.openai.com" target="_blank"><span class="ql-icon">🤖</span><span class="ql-name">ChatGPT</span></a>
+      <a class="quick-link" href="https://www.wikipedia.org" target="_blank"><span class="ql-icon">📚</span><span class="ql-name">Wikipedia</span></a>
+      <a class="quick-link" href="https://stackoverflow.com" target="_blank"><span class="ql-icon">💻</span><span class="ql-name">StackOverflow</span></a>
+      <a class="quick-link" href="https://www.reddit.com" target="_blank"><span class="ql-icon">🗣️</span><span class="ql-name">Reddit</span></a>
+      <a class="quick-link" href="https://news.google.com" target="_blank"><span class="ql-icon">📰</span><span class="ql-name">News</span></a>
+    </div>
+  </div>
+</div>
+
+<!-- Particle Canvas + Firebase Script -->
+<script>
+  const canvas = document.getElementById("bg");
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  let particles = [];
+  for(let i=0;i<150;i++) particles.push({
+    x:Math.random()*canvas.width, y:Math.random()*canvas.height,
+    r:Math.random()*1.5+0.3, dx:(Math.random()-0.5)*0.5, dy:(Math.random()-0.5)*0.5,
+    o:Math.random()*0.4+0.1, c: Math.random()>0.5 ? "0,229,255" : "124,92,252"
+  });
+  function animateBg(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{
+      p.x+=p.dx; p.y+=p.dy;
+      if(p.x<0||p.x>canvas.width) p.dx*=-1;
+      if(p.y<0||p.y>canvas.height) p.dy*=-1;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.c},${p.o})`; ctx.fill();
+    });
+    requestAnimationFrame(animateBg);
+  }
+  animateBg();
+  window.addEventListener("resize",()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
+</script>
+
+<script>
+  // Search functions
+  function doMainSearch(){
+    const q = document.getElementById("mainSearch").value.trim();
+    if(!q) return;
+    window.location.href = "results.html?q=" + encodeURIComponent(q);
+  }
+  function doAddressSearch(){
+    const q = document.getElementById("addressBar").value.trim();
+    if(!q) return;
+    // If it looks like a URL, open directly
+    if(q.startsWith("http://") || q.startsWith("https://") || (q.includes(".") && !q.includes(" "))){
+      let url = q.startsWith("http") ? q : "https://"+q;
+      window.open(url,"_blank");
+    } else {
+      window.location.href = "results.html?q=" + encodeURIComponent(q);
+    }
+    hideSuggestions();
+  }
+  function feelingLucky(){
+    const q = document.getElementById("mainSearch").value.trim() || "web development";
+    window.location.href = "results.html?q=" + encodeURIComponent(q);
+  }
+  function openGoogle(){
+    const q = document.getElementById("mainSearch").value.trim();
+    window.open("https://www.google.com/search?q="+encodeURIComponent(q),"_blank");
+  }
+
+  // Address bar suggestions (mini database)
+  const quickSuggestions = [
+    {title:"YouTube",url:"https://youtube.com",icon:"▶️"},
+    {title:"Google",url:"https://google.com",icon:"🔍"},
+    {title:"GitHub",url:"https://github.com",icon:"🐙"},
+    {title:"Wikipedia",url:"https://wikipedia.org",icon:"📚"},
+    {title:"ChatGPT",url:"https://chat.openai.com",icon:"🤖"},
+    {title:"Stack Overflow",url:"https://stackoverflow.com",icon:"💻"},
+    {title:"Reddit",url:"https://reddit.com",icon:"🗣️"},
+    {title:"Twitter / X",url:"https://x.com",icon:"𝕏"},
+    {title:"Instagram",url:"https://instagram.com",icon:"📸"},
+    {title:"Netflix",url:"https://netflix.com",icon:"🎬"},
+    {title:"Amazon",url:"https://amazon.in",icon:"🛒"},
+    {title:"Flipkart",url:"https://flipkart.com",icon:"🛍️"},
+    {title:"IRCTC",url:"https://irctc.co.in",icon:"🚂"},
+    {title:"LeetCode",url:"https://leetcode.com",icon:"⌨️"},
+    {title:"MDN Web Docs",url:"https://developer.mozilla.org",icon:"📖"},
+    {title:"W3Schools",url:"https://w3schools.com",icon:"🌐"},
+    {title:"GeeksforGeeks",url:"https://geeksforgeeks.org",icon:"🧑‍💻"},
+    {title:"Cricbuzz",url:"https://cricbuzz.com",icon:"🏏"},
+    {title:"BBC News",url:"https://bbc.com/news",icon:"📰"},
+    {title:"NDTV",url:"https://ndtv.com",icon:"📺"},
+  ];
+
+  function showAddressSuggestions(val){
+    const box = document.getElementById("suggestions");
+    if(!val || val.length < 1){ box.classList.remove("show"); return; }
+    const filtered = quickSuggestions.filter(s=>
+      s.title.toLowerCase().includes(val.toLowerCase()) || s.url.includes(val.toLowerCase())
+    ).slice(0,6);
+    if(filtered.length === 0){ box.classList.remove("show"); return; }
+    box.innerHTML = filtered.map(s=>`
+      <div class="suggestion-item" onclick="openSuggestion('${s.url}')">
+        <span class="s-icon">${s.icon}</span>
+        <span class="s-title">${s.title}</span>
+        <span class="s-url">${s.url}</span>
+      </div>
+    `).join("");
+    box.classList.add("show");
+  }
+  function openSuggestion(url){ window.open(url,"_blank"); hideSuggestions(); }
+  function hideSuggestions(){ document.getElementById("suggestions").classList.remove("show"); }
+</script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+  // 🔧 Firebase Configuration — arlo-v1 project (naya config)
+  const firebaseConfig = {
+    apiKey: "AIzaSyA05Y2IMWbFMQkzaRYFUCBv7R9ipNgrWAU",         // API Key
+    authDomain: "arlo-v1-73d70.firebaseapp.com",                // Auth Domain
+    projectId: "arlo-v1-73d70",                                  // Project ID
+    storageBucket: "arlo-v1-73d70.firebasestorage.app",          // Storage Bucket
+    messagingSenderId: "1091613376839",                          // Messaging Sender ID
+    appId: "1:1091613376839:web:188c8b7490322d2de18c62"          // App ID
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  // Protect this page
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      window.location.href = "index.html";
+    } else {
+      const name = user.displayName || user.email.split("@")[0];
+      document.getElementById("userName").textContent = name;
+      document.getElementById("userAvatar").textContent = name.charAt(0).toUpperCase();
+      document.title = "Astra — " + name;
+    }
+  });
+
+  window.logout = function() {
+    signOut(auth).then(() => {
+      localStorage.removeItem("currentUser");
+      sessionStorage.removeItem("currentUser");
+      window.location.href = "index.html";
+    }).catch((err) => console.error(err));
+  };
+</script>
+</body>
+</html>
